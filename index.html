@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Before and after</title>
+<style>
+  :root{
+    --frame:#ECECEA;      /* light grey frame around the screens */
+    --label:#3A3A3C;      /* 10.6:1 on the frame */
+    --line:#FFFFFF;
+    --handle:#FFFFFF;
+    --handle-ink:#1C1C1E;
+    --focus:#0B57D0;      /* focus ring, 3:1+ on frame and on white */
+    --pad:6%;             /* space between frame edge and screens */
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+  .cmp{position:relative;width:100%;height:100%;min-height:200px;background:var(--frame);border-radius:12px;overflow:hidden;
+       user-select:none;-webkit-user-select:none;touch-action:pan-y;cursor:ew-resize;--pos:50%}
+  .layer{position:absolute;inset:0}
+  .layer.before{clip-path:inset(0 calc(100% - var(--pos)) 0 0)}
+  .stage{position:absolute;inset:max(9%,34px) var(--pad) var(--pad)}
+  .stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:50% 0;pointer-events:none;-webkit-user-drag:none}
+  .divider{position:absolute;top:0;bottom:0;left:var(--pos);width:2px;margin-left:-1px;background:var(--line);box-shadow:0 0 0 1px rgba(0,0,0,.12);pointer-events:none}
+  .knob{position:absolute;top:50%;left:var(--pos);width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;
+        background:var(--handle);color:var(--handle-ink);box-shadow:0 1px 4px rgba(0,0,0,.25);display:grid;place-items:center;pointer-events:none}
+  .knob svg{width:22px;height:22px}
+  .lbl{position:absolute;top:12px;font-size:14px;line-height:1.3;font-weight:600;color:var(--label);pointer-events:none}
+  .lbl.b{left:16px}.lbl.a{right:16px}
+  input[type=range]{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:ew-resize}
+  .cmp:has(input:focus-visible) .knob{outline:3px solid var(--focus);outline-offset:3px}
+  .msg{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--label);font-size:15px}
+</style>
+</head>
+<body>
+<div class="cmp" id="cmp">
+  <div class="layer after" aria-hidden="true"><div class="stage"><img id="after" alt="" draggable="false"></div></div>
+  <div class="layer before" aria-hidden="true"><div class="stage"><img id="before" alt="" draggable="false"></div></div>
+  <div class="divider" aria-hidden="true"></div>
+  <div class="knob" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l-6 6 6 6M15 6l6 6-6 6"/></svg>
+  </div>
+  <span class="lbl b" id="lb" aria-hidden="true">Before</span>
+  <span class="lbl a" id="la" aria-hidden="true">After</span>
+  <input type="range" id="r" min="0" max="100" step="1" value="50">
+</div>
+<script>
+(function(){
+  // ---- Settings come from the address: ?before=URL&after=URL ----
+  // Optional: &balt=, &aalt= (descriptions for screen readers), &bl=, &al= (labels), &start=50, &anim=1
+  var q=new URLSearchParams(location.search);
+  var get=function(k,d){var v=q.get(k);return v===null||v===''?d:v};
+  var before=get('before','before.png'), after=get('after','after.png');
+  var bl=get('bl','Before'), al=get('al','After');
+  var balt=get('balt','Screen before the redesign'), aalt=get('aalt','Screen after the redesign');
+  var start=Math.max(0,Math.min(100,parseFloat(get('start','50'))||50));
+
+  var cmp=document.getElementById('cmp'), r=document.getElementById('r');
+  var bi=document.getElementById('before'), ai=document.getElementById('after');
+  document.getElementById('lb').textContent=bl; document.getElementById('la').textContent=al;
+  bi.src=before; ai.src=after;
+  r.setAttribute('aria-label','Compare '+bl.toLowerCase()+' and '+al.toLowerCase()+'. '+balt+'. '+aalt+'.');
+
+  function set(p){p=Math.max(0,Math.min(100,p));cmp.style.setProperty('--pos',p+'%');r.value=Math.round(p);
+    r.setAttribute('aria-valuetext',Math.round(p)+'% '+bl.toLowerCase()+' shown');}
+  set(start);
+  r.addEventListener('input',function(){stop();set(+r.value)});
+
+  // Pointer drag anywhere on the frame
+  var dragging=false;
+  function fromEvent(e){var b=cmp.getBoundingClientRect();return (e.clientX-b.left)/b.width*100}
+  cmp.addEventListener('pointerdown',function(e){dragging=true;stop();cmp.setPointerCapture(e.pointerId);set(fromEvent(e));});
+  cmp.addEventListener('pointermove',function(e){if(dragging)set(fromEvent(e))});
+  ['pointerup','pointercancel'].forEach(function(t){cmp.addEventListener(t,function(){dragging=false})});
+
+  // Optional one-time intro sweep (&anim=1), skipped for reduced motion
+  var raf=null;function stop(){if(raf){cancelAnimationFrame(raf);raf=null}}
+  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(get('anim','0')==='1'&&!reduce){
+    var keys=[start,80,20,start],dur=2400,t0=null;
+    var run=function(){t0=null;raf=requestAnimationFrame(function step(t){if(!t0)t0=t;var k=Math.min(1,(t-t0)/dur);
+      var seg=Math.min(2,Math.floor(k*3)),f=k*3-seg,e=f<.5?2*f*f:1-Math.pow(-2*f+2,2)/2;
+      set(keys[seg]+(keys[seg+1]-keys[seg])*e);if(k<1)raf=requestAnimationFrame(step);else raf=null;});};
+    if('IntersectionObserver' in window){var io=new IntersectionObserver(function(en){if(en[0].isIntersecting){io.disconnect();setTimeout(run,300)}},{threshold:.5});io.observe(cmp)}else run();
+  }
+
+  // Friendly message if an image link is wrong
+  function bad(){var m=document.createElement('div');m.className='msg';m.textContent='An image did not load. Check the before= and after= links.';cmp.appendChild(m)}
+  bi.onerror=bad; ai.onerror=bad;
+})();
+</script>
+</body>
+</html>

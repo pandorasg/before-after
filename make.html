@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Make a before/after slider</title>
+<style>
+  :root{--ink:#1C1C1E;--muted:#545458;--line:#C7C7CC;--bg:#FFFFFF;--accent:#0B57D0}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+  main{max-width:880px;margin:0 auto;padding:32px 16px 64px}
+  h1{font-size:28px;margin:0 0 4px} p.sub{color:var(--muted);margin:0 0 24px}
+  label{display:block;font-weight:600;margin:16px 0 6px}
+  .hint{font-weight:400;color:var(--muted);font-size:14px}
+  input[type=url],input[type=text]{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit}
+  input:focus-visible,button:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:640px){.row{grid-template-columns:1fr}}
+  .check{display:flex;gap:10px;align-items:center;margin-top:16px;min-height:44px;font-weight:600}
+  .check input{width:22px;height:22px}
+  textarea{width:100%;min-height:120px;padding:12px;border:1px solid var(--line);border-radius:10px;font:13px/1.5 ui-monospace,Menlo,monospace}
+  button{min-height:44px;padding:10px 18px;border:0;border-radius:10px;background:var(--ink);color:#fff;font:inherit;font-weight:600;cursor:pointer;margin-top:10px}
+  #status{margin-left:12px;color:var(--muted)}
+  .preview{margin-top:24px;border:1px dashed var(--line);border-radius:12px;padding:12px}
+  .preview iframe{display:block;width:100%;border:0}
+</style>
+</head>
+<body>
+<main>
+  <h1>Make a before/after slider</h1>
+  <p class="sub">Paste two image links. Copy the code at the bottom into a Title block on Carbonmade (delete its text first, then paste).</p>
+
+  <div class="row">
+    <div><label for="before">Before image link</label><input id="before" type="url" placeholder="https://…/before.png"></div>
+    <div><label for="after">After image link</label><input id="after" type="url" placeholder="https://…/after.png"></div>
+  </div>
+  <div class="row">
+    <div><label for="balt">Describe the before image <span class="hint">(read by screen readers)</span></label><input id="balt" type="text" value="Screen before the redesign"></div>
+    <div><label for="aalt">Describe the after image</label><input id="aalt" type="text" value="Screen after the redesign"></div>
+  </div>
+  <div class="row">
+    <div><label for="bl">Left label</label><input id="bl" type="text" value="Before"></div>
+    <div><label for="al">Right label</label><input id="al" type="text" value="After"></div>
+  </div>
+  <div class="row">
+    <div><label for="ratio">Shape (width : height) <span class="hint">e.g. 4:3 for laptop screens, 3:4 for phone screens</span></label><input id="ratio" type="text" value="4:3"></div>
+    <div><label class="check"><input id="anim" type="checkbox" checked> Sweep once when it scrolls into view</label></div>
+  </div>
+
+  <label for="code">Code for Carbonmade</label>
+  <textarea id="code" readonly></textarea>
+  <button id="copy" type="button">Copy code</button><span id="status" role="status" aria-live="polite"></span>
+
+  <div class="preview"><div id="pv"></div></div>
+</main>
+<script>
+(function(){
+  var base=location.href.replace(/make\.html.*$/,'');
+  var $=function(id){return document.getElementById(id)};
+  var ids=['before','after','balt','aalt','bl','al','ratio','anim'];
+  function build(){
+    var q=new URLSearchParams();
+    q.set('before',$('before').value.trim()||'before.png');
+    q.set('after',$('after').value.trim()||'after.png');
+    if($('balt').value)q.set('balt',$('balt').value);
+    if($('aalt').value)q.set('aalt',$('aalt').value);
+    if($('bl').value&&$('bl').value!=='Before')q.set('bl',$('bl').value);
+    if($('al').value&&$('al').value!=='After')q.set('al',$('al').value);
+    if($('anim').checked)q.set('anim','1');
+    var m=($('ratio').value||'4:3').split(':'),w=parseFloat(m[0])||4,h=parseFloat(m[1])||3;
+    var src=base+'index.html?'+q.toString();
+    var title=($('bl').value||'Before')+' and '+($('al').value||'After')+' comparison';
+    var code='<iframe src="'+src.replace(/&/g,'&amp;')+'" title="'+title.replace(/"/g,'&quot;')+'" width="100%" height="'+Math.round(800*h/w)+'" style="width:100%;aspect-ratio:'+w+' / '+h+';height:auto;border:0" loading="lazy"></iframe>';
+    $('code').value=code;$('pv').innerHTML=code;
+  }
+  ids.forEach(function(i){$(i).addEventListener('input',build)});
+  $('copy').addEventListener('click',function(){$('code').select();
+    (navigator.clipboard?navigator.clipboard.writeText($('code').value):Promise.reject()).then(function(){$('status').textContent='Copied.'},function(){document.execCommand('copy');$('status').textContent='Copied.'});});
+  build();
+})();
+</script>
+</body>
+</html>
